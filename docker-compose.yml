@@ -5,14 +5,14 @@ services:
     image: nocodb/nocodb:latest
     restart: always
     environment:
-      NC_DB: pg://db:5432?u=${POSTGRES_USER}&p=${POSTGRES_PASSWORD}&d=${POSTGRES_DB}
-      DB_QUERY_LIMIT_DEFAULT: ${DB_QUERY_LIMIT_DEFAULT}
-      DB_QUERY_LIMIT_MAX: ${DB_QUERY_LIMIT_MAX}
-      DB_QUERY_LIMIT_MIN: ${DB_QUERY_LIMIT_MIN}
-      NC_PUBLIC_URL: https://data.doora.cloud
-      NC_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NC_PUBLIC_URL: ${PUBLIC_URL}
       NC_ADMIN_EMAIL: ${ADMIN_EMAIL}
       NC_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      NC_DB: pg://db:${DB_PORT}?u=${DB_USER}&p=${DB_PASSWORD}&d=${DB_NAME}
+      NC_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      DB_QUERY_LIMIT_DEFAULT: ${DB_QUERY_LIMIT_DEFAULT:-25}
+      DB_QUERY_LIMIT_MAX: ${DB_QUERY_LIMIT_MAX:-1000}
+      DB_QUERY_LIMIT_MIN: ${DB_QUERY_LIMIT_MIN:-1}
     volumes:
       - ${VOLUME_DIR}/data:/usr/app/data
     expose:
@@ -31,19 +31,20 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          cpus: ${LIMIT_NOCODB_CPU:-1}
+          memory: ${LIMIT_NOCODB_RAM:-1G}
         reservations:
           cpus: '0.2'
           memory: 128M
   postgres:
     image: postgres:14-alpine
     restart: always
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
     expose:
       - 5432
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ${VOLUME_DIR}/postgresql:/var/lib/postgresql/data
     networks:
@@ -56,8 +57,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 256M
+          cpus: ${LIMIT_DB_CPU:-1}
+          memory: ${LIMIT_DB_RAM:-256M}
         reservations:
           cpus: '0.1'
           memory: 16M
@@ -77,8 +78,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: ${LIMIT_REDIS_CPU:-1}
+          memory: ${LIMIT_REDIS_RAM:-512M}
         reservations:
           cpus: '0.1'
           memory: 16M
