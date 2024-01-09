@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  nocodb:
+    image: nocodb/nocodb:latest
+    restart: always
+    environment:
+      NC_DB: pg://db:5432?u=${POSTGRES_USER}&p=${POSTGRES_PASSWORD}&d=${POSTGRES_DB}
+      DB_QUERY_LIMIT_DEFAULT: ${DB_QUERY_LIMIT_DEFAULT}
+      DB_QUERY_LIMIT_MAX: ${DB_QUERY_LIMIT_MAX}
+      DB_QUERY_LIMIT_MIN: ${DB_QUERY_LIMIT_MIN}
+      NC_PUBLIC_URL: https://data.doora.cloud
+      NC_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NC_ADMIN_EMAIL: ${ADMIN_EMAIL}
+      NC_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    volumes:
+      - ${VOLUME_DIR}/data:/usr/app/data
+    expose:
+      - 8080
+    networks:
+      - internal
+      - nginx
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    links:
+      - postgres:db
+      - redis:redis
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ${VOLUME_DIR}/postgresql:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 16M
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - ${VOLUME_DIR}/redis:/data
+    expose:
+      - 6379
+    networks:
+      - internal
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 16M
+
+networks:
+  internal:
+  nginx:
+    name: nginx
+    external: true
