@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  nocodb:
+  app:
     image: nocodb/nocodb:latest
     restart: always
     environment:
@@ -14,20 +14,17 @@ services:
       DB_QUERY_LIMIT_MAX: ${DB_QUERY_LIMIT_MAX:-1000}
       DB_QUERY_LIMIT_MIN: ${DB_QUERY_LIMIT_MIN:-1}
     volumes:
-      - ${VOLUME_DIR}/data:/usr/app/data
+      - ${BASE_VOLUME}/data:/usr/app/data
     expose:
       - 8080
     networks:
       - internal
       - nginx
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    links:
-      - postgres:db
-      - redis:redis
     deploy:
       resources:
         limits:
@@ -36,7 +33,7 @@ services:
         reservations:
           cpus: '0.2'
           memory: 128M
-  postgres:
+  db:
     image: postgres:14-alpine
     restart: always
     environment:
@@ -46,7 +43,7 @@ services:
     expose:
       - 5432
     volumes:
-      - ${VOLUME_DIR}/postgresql:/var/lib/postgresql/data
+      - ${BASE_VOLUME}/postgresql:/var/lib/postgresql/data
     networks:
       - internal
     healthcheck:
@@ -67,7 +64,7 @@ services:
     restart: always
     command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
     volumes:
-      - ${VOLUME_DIR}/redis:/data
+      - ${BASE_VOLUME}/redis:/data
     expose:
       - 6379
     networks:
@@ -87,5 +84,4 @@ services:
 networks:
   internal:
   nginx:
-    name: nginx
     external: true
