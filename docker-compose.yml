@@ -31,7 +31,7 @@ services:
           cpus: ${LIMIT_NOCODB_CPU:-1}
           memory: ${LIMIT_NOCODB_RAM:-1G}
         reservations:
-          cpus: '0.2'
+          cpus: "0.2"
           memory: 128M
   db:
     image: postgres:14-alpine
@@ -57,7 +57,7 @@ services:
           cpus: ${LIMIT_DB_CPU:-1}
           memory: ${LIMIT_DB_RAM:-256M}
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 16M
   redis:
     image: redis:7-alpine
@@ -70,7 +70,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       retries: 3
     deploy:
       resources:
@@ -78,10 +78,33 @@ services:
           cpus: ${LIMIT_REDIS_CPU:-1}
           memory: ${LIMIT_REDIS_RAM:-512M}
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 16M
+  db-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
+    expose:
+      - 9187
+    networks:
+      - internal
+      - monitoring
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: ${LIMIT_CPU_DB_EXPORTER:-0.2}
+          memory: ${LIMIT_RAM_DB_EXPORTER:-128M}
+        reservations:
+          cpus: "0.1"
+          memory: 10M
 
 networks:
   internal:
   nginx:
+    external: true
+  monitoring:
     external: true
